@@ -22,6 +22,11 @@
   --sky: #b9dcf5;
   --coral: #ff7081;
 
+  /* Colours from the "media." badge in the Alendei Media logo */
+  --indigo: #3300cb;
+  --magenta: #da296e;
+  --sun: #fad100;
+
   --ff-display: "Oswald Variable", "Oswald", "Arial Narrow", Impact, sans-serif;
   --ff-body: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 
