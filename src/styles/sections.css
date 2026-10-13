@@ -969,6 +969,8 @@ dialog[open] { animation: dlg-in 0.5s var(--ease); }
 .field select:focus { border-color: var(--green); }
 .field.is-invalid select { border-color: #c73b4e; }
 .contact__info li a { text-decoration: underline; text-underline-offset: 3px; }
+.contact__info--single { width: auto; align-items: center; }
+.contact__info--single li { align-items: center; font-size: 1.05rem; }
 @media (max-width: 1080px) {
   .roles { grid-template-columns: repeat(2, 1fr); }
 }
