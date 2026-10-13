@@ -85,7 +85,7 @@ a full stop or "and" instead.
 - Business enquiries: **bharat@alendei.com**, +91 84695 25008
 - Careers: **hr@alendei.com**
 - Office: 302, Iscon Atria 2, Gotri, Vadodara, Gujarat 390007 India
-- Footer: © 2026 Alendei Media Pvt Ltd. All rights reserved.
+- Footer: © 2026 Alendei Media Private Limited. All rights reserved.
 
 ## Forms
 
