@@ -159,11 +159,15 @@ input, textarea { font: inherit; color: inherit; }
   z-index: 3;
   display: inline-grid;
   place-items: center;
-  padding: 0.55em 0.6em;
-  font: 500 1.08rem/1 var(--ff-display);
+  aspect-ratio: 1;
+  min-width: 5.4em;
+  max-width: 7.4em;
+  padding: 0.95em;
+  font: 500 1.08rem/1.02 var(--ff-display);
   text-align: center;
+  text-wrap: balance;
   color: var(--ink);
-  white-space: nowrap;
+  white-space: normal;
   isolation: isolate;
   transform: rotate(var(--r));
   scale: var(--pop, 1);
@@ -173,11 +177,7 @@ input, textarea { font: inherit; color: inherit; }
 .sticker::before {
   content: "";
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: calc(100% + 1.1em);
-  aspect-ratio: 1;
-  translate: -50% -50%;
+  inset: 0;
   z-index: -1;
   background: var(--c);
   -webkit-mask: var(--shape) center / 100% 100% no-repeat;
@@ -185,9 +185,11 @@ input, textarea { font: inherit; color: inherit; }
   animation: spin 16s linear infinite;
 }
 .title-wrap { position: relative; }
-.title-wrap--center { text-align: center; }
+.title-wrap--center { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .title-wrap .pill { margin-bottom: 22px; }
-.title-sticker { position: absolute; left: var(--x, 0); top: var(--y, 0); }
+/* Stickers sit in the flow above headings, nudged sideways, so they never cover the words */
+.title-sticker { margin-bottom: clamp(10px, 1.4vw, 18px); translate: var(--dx, 0) 0; font-size: clamp(0.95rem, 1.3vw, 1.22rem); }
+@media (max-width: 760px) { .title-sticker { translate: calc(var(--dx, 0) * 0.35) 0; font-size: 0.8rem; } }
 
 /* doodle on a pastel shape */
 .doodle-blob, .bento__art, .crew__art, .contact__blob, .process__burst {

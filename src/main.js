@@ -11,9 +11,8 @@ import { CASES } from './cases.js';
 gsap.registerPlugin(ScrollTrigger);
 window.__alendeiReady = true;
 
-// Set to a form endpoint (e.g. Formspree) to POST enquiries; empty = open the visitor's email app.
+// Set to a form endpoint (e.g. Formspree) to POST submissions; empty = open the visitor's email app.
 const FORM_ENDPOINT = '';
-const CONTACT_EMAIL = 'care@alendei.com';
 
 const $ = (s, c = document) => c.querySelector(s);
 const $$ = (s, c = document) => [...c.querySelectorAll(s)];
@@ -32,9 +31,10 @@ if (!reduce) {
   gsap.ticker.add((t) => lenis.raf(t * 1000));
   gsap.ticker.lagSmoothing(0);
 }
+const onScrollTick = (fn) => (lenis ? lenis.on('scroll', fn) : addEventListener('scroll', fn, { passive: true }));
 
-function scrollToTarget(target) {
-  if (lenis) lenis.scrollTo(target, { duration: 1.4, force: true });
+function scrollToTarget(target, immediate = false) {
+  if (lenis) lenis.scrollTo(target, { duration: 1.4, force: true, immediate });
   else if (typeof target === 'number') window.scrollTo({ top: target });
   else target.scrollIntoView();
 }
@@ -85,13 +85,12 @@ const nav = $('[data-nav]');
 const menu = $('[data-menu]');
 const menuToggle = $('[data-menu-toggle]');
 let lastY = 0;
-function onScroll(y) {
+onScrollTick(() => {
+  const y = lenis ? lenis.scroll : scrollY;
   nav.classList.toggle('is-scrolled', y > 40);
   if (!document.body.classList.contains('menu-open')) nav.classList.toggle('is-hidden', y > lastY && y > 500);
   lastY = y;
-}
-if (lenis) lenis.on('scroll', (e) => onScroll(e.scroll));
-else addEventListener('scroll', () => onScroll(scrollY), { passive: true });
+});
 
 const menuTl = gsap
   .timeline({ paused: true })
@@ -119,18 +118,18 @@ function closeMenu() {
 menuToggle.addEventListener('click', () => (document.body.classList.contains('menu-open') ? closeMenu() : openMenu()));
 addEventListener('keydown', (e) => e.key === 'Escape' && closeMenu());
 
-// In-page links
-$$('a[href^="#"]').forEach((a) =>
+// Links to a section on this same page scroll smoothly; links to the other page navigate normally
+$$('a[href*="#"]').forEach((a) =>
   a.addEventListener('click', (e) => {
-    const id = a.getAttribute('href');
-    if (id.length < 2) return;
-    const target = $(id);
+    const url = new URL(a.href, location.href);
+    if (url.pathname !== location.pathname || url.hash.length < 2) return;
+    const target = document.getElementById(decodeURIComponent(url.hash.slice(1)));
     if (!target) return;
     e.preventDefault();
     closeMenu();
     if (a.dataset.prefill) {
-      const msg = $('[data-contact-form] textarea[name="message"]');
-      if (msg && !msg.value) msg.value = `Interested in: ${a.dataset.prefill}\n\n`;
+      const msg = $('form[data-mail-form] textarea[name="message"]');
+      if (msg && !msg.value) msg.value = `Hi, I’m interested in ${a.dataset.prefill}.\n\n`;
     }
     scrollToTarget(target);
   })
@@ -139,129 +138,163 @@ $$('a[href^="#"]').forEach((a) =>
 /* ---------------------------------------------------------
    Hero: intro + rotating channel words + reel
    --------------------------------------------------------- */
-const heroLetters = splitText($('[data-hero-letters]'));
-const heroTitleWords = splitText($('[data-hero-title]'), { chars: false });
-gsap.set(['.hero__top', '[data-reel-stage]'], { opacity: 1 });
-
-if (!reduce) {
-  gsap
-    .timeline({ defaults: { ease: 'power4.out' }, delay: 0.1 })
-    .from('[data-hero-kicker]', { y: -24, opacity: 0, duration: 0.7 })
-    .from(heroLetters, { yPercent: 70, scaleY: 0.2, opacity: 0, duration: 1.1, stagger: 0.065, ease: 'back.out(2.2)' }, '-=0.35')
-    .fromTo('.hero__sticker', { '--pop': 0 }, { '--pop': 1, duration: 1.1, stagger: 0.12, ease: 'elastic.out(1, 0.5)' }, '-=0.6')
-    .from(heroTitleWords, { y: 36, opacity: 0, rotate: 4, duration: 0.8, stagger: 0.05 }, '-=1.1')
-    .from('[data-hero-sub]', { y: 20, opacity: 0, duration: 0.8 }, '-=0.6')
-    .from('[data-hero-ctas] > *', { y: 20, opacity: 0, stagger: 0.1, duration: 0.8 }, '-=0.6')
-    .from('[data-reel-stage]', { opacity: 0, duration: 1.2 }, '-=1.2')
-    .from('.hero__reel-ui', { y: 80, opacity: 0, duration: 1.2 }, '<0.2');
-}
-
-const rotItems = $$('[data-rotator] > span');
-gsap.set(rotItems, { y: 0, yPercent: 105 });
-gsap.set(rotItems[0], { yPercent: 0 });
-if (!reduce) {
-  let rot = 0;
-  setInterval(() => {
-    const cur = rotItems[rot];
-    rot = (rot + 1) % rotItems.length;
-    gsap.to(cur, { yPercent: -105, duration: 0.65, ease: 'power3.inOut' });
-    gsap.fromTo(rotItems[rot], { yPercent: 105 }, { yPercent: 0, duration: 0.65, ease: 'power3.inOut' });
-  }, 1700);
-}
-
-const heroVideo = $('[data-reel-video]');
-if (reduce) {
-  heroVideo.removeAttribute('autoplay');
-  heroVideo.pause();
-} else {
-  new IntersectionObserver(([en]) => (en.isIntersecting ? heroVideo.play().catch(() => {}) : heroVideo.pause())).observe(heroVideo);
-}
-
 const mm = gsap.matchMedia();
+const hero = $('.hero');
+if (hero) {
+  const heroLetters = splitText($('[data-hero-letters]'));
+  const heroTitleWords = splitText($('[data-hero-title]'), { chars: false });
+  gsap.set(['.hero__top', '[data-reel-stage]'], { opacity: 1 });
 
-if (!reduce) {
-  // Circle grows into a full-bleed showreel while the stage is pinned (Agenius hero ring effect)
-  const circle = $('[data-reel-circle]');
-  const isSmall = () => innerWidth <= 760;
-  const startR = () => (isSmall() ? Math.min(innerWidth * 0.42, innerHeight * 0.3) : Math.min(innerWidth * 0.31, innerHeight * 0.38));
-  gsap
-    .timeline({
-      scrollTrigger: { trigger: '[data-reel-stage]', start: 'top top', end: '+=110%', scrub: 1, pin: true, anticipatePin: 1, invalidateOnRefresh: true },
-    })
-    .fromTo(circle, { '--r': () => `${startR()}px` }, { '--r': () => `${Math.hypot(innerWidth, innerHeight) / 2 + 10}px`, ease: 'power2.inOut', duration: 1 }, 0)
-    .to('[data-rings]', { scale: 1.7, opacity: 0, ease: 'power1.in', duration: 0.8 }, 0)
-    .to('.hero__reel-ui', { scale: 1.12, duration: 1 }, 0)
-    .fromTo('.hero__reel-chip', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3 }, 0.6);
+  if (!reduce) {
+    gsap
+      .timeline({ defaults: { ease: 'power4.out' }, delay: 0.1 })
+      .from('[data-hero-kicker]', { y: -24, opacity: 0, duration: 0.7 })
+      .from(heroLetters, { yPercent: 70, scaleY: 0.2, opacity: 0, duration: 1.1, stagger: 0.065, ease: 'back.out(2.2)' }, '-=0.35')
+      .fromTo('.hero__sticker', { '--pop': 0 }, { '--pop': 1, duration: 1.1, stagger: 0.12, ease: 'elastic.out(1, 0.5)' }, '-=0.6')
+      .from(heroTitleWords, { y: 36, opacity: 0, rotate: 4, duration: 0.8, stagger: 0.05 }, '-=1.1')
+      .from('[data-hero-sub]', { y: 20, opacity: 0, duration: 0.8 }, '-=0.6')
+      .from('[data-hero-ctas] > *', { y: 20, opacity: 0, stagger: 0.1, duration: 0.8 }, '-=0.6')
+      .from('[data-reel-stage]', { opacity: 0, duration: 1.2 }, '-=1.2')
+      .from('.hero__reel-ui', { y: 80, opacity: 0, duration: 1.2 }, '<0.2');
+  }
+
+  const rotItems = $$('[data-rotator] > span');
+  gsap.set(rotItems, { y: 0, yPercent: 105 });
+  gsap.set(rotItems[0], { yPercent: 0 });
+  if (!reduce) {
+    let rot = 0;
+    setInterval(() => {
+      const cur = rotItems[rot];
+      rot = (rot + 1) % rotItems.length;
+      gsap.to(cur, { yPercent: -105, duration: 0.65, ease: 'power3.inOut' });
+      gsap.fromTo(rotItems[rot], { yPercent: 105 }, { yPercent: 0, duration: 0.65, ease: 'power3.inOut' });
+    }, 1700);
+  }
+
+  const heroVideo = $('[data-reel-video]');
+  if (reduce) {
+    heroVideo.removeAttribute('autoplay');
+    heroVideo.pause();
+  } else {
+    new IntersectionObserver(([en]) => (en.isIntersecting ? heroVideo.play().catch(() => {}) : heroVideo.pause())).observe(heroVideo);
+  }
+
+  if (!reduce) {
+    // Circle grows into a full-bleed showreel while the stage is pinned (Agenius hero ring effect)
+    const circle = $('[data-reel-circle]');
+    const isSmall = () => innerWidth <= 760;
+    const startR = () => (isSmall() ? Math.min(innerWidth * 0.42, innerHeight * 0.3) : Math.min(innerWidth * 0.31, innerHeight * 0.38));
+    gsap
+      .timeline({
+        scrollTrigger: { trigger: '[data-reel-stage]', start: 'top top', end: '+=110%', scrub: 1, pin: true, anticipatePin: 1, invalidateOnRefresh: true },
+      })
+      .fromTo(circle, { '--r': () => `${startR()}px` }, { '--r': () => `${Math.hypot(innerWidth, innerHeight) / 2 + 10}px`, ease: 'power2.inOut', duration: 1 }, 0)
+      .to('[data-rings]', { scale: 1.7, opacity: 0, ease: 'power1.in', duration: 0.8 }, 0)
+      .to('.hero__reel-ui', { scale: 1.12, duration: 1 }, 0)
+      .fromTo('.hero__reel-chip', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3 }, 0.6);
+  }
 }
 
 /* ---------------------------------------------------------
-   Why Alendei exists — five vendors collapse into one roof
+   Why Alendei exists: five vendors collapse into one roof
    --------------------------------------------------------- */
-const vendors = $$('[data-vendor]');
-const oneRoof = $('[data-one-roof]');
-gsap.set(oneRoof, { xPercent: -50, yPercent: -50, scale: 0 });
-if (reduce) {
-  gsap.set(vendors, { opacity: 0 });
-  gsap.set(oneRoof, { scale: 1 });
-  gsap.set('[data-exists-resolve]', { opacity: 1 });
-  gsap.set('[data-exists-line] span', { '--strike': '100%' });
-} else {
-  gsap
-    .timeline({ scrollTrigger: { trigger: '[data-exists-pin]', start: 'top top', end: '+=160%', scrub: 1, pin: true, anticipatePin: 1 } })
-    .from(vendors, { '--s': 0, opacity: 0, stagger: 0.08, duration: 0.35, ease: 'back.out(2)' })
-    .to('[data-exists-line] span', { '--strike': '100%', duration: 0.3 }, '+=0.1')
-    .to(vendors, { '--px': 0, '--py': 0, '--rot': '0deg', '--s': 0.35, duration: 0.6, stagger: 0.04, ease: 'power2.in' }, '+=0.1')
-    .to(vendors, { opacity: 0, duration: 0.12 }, '-=0.12')
-    .to(oneRoof, { scale: 1, rotate: 0, duration: 0.5, ease: 'back.out(1.7)', startAt: { rotate: -120 } }, '-=0.1')
-    .fromTo('[data-exists-resolve]', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3 }, '-=0.2')
-    .to({}, { duration: 0.25 });
+if ($('[data-exists]')) {
+  const vendors = $$('[data-vendor]');
+  const oneRoof = $('[data-one-roof]');
+  gsap.set(oneRoof, { xPercent: -50, yPercent: -50, scale: 0 });
+  if (reduce) {
+    gsap.set(vendors, { opacity: 0 });
+    gsap.set(oneRoof, { scale: 1 });
+    gsap.set('[data-exists-resolve]', { opacity: 1 });
+    gsap.set('[data-exists-line] span', { '--strike': '100%' });
+  } else {
+    gsap
+      .timeline({ scrollTrigger: { trigger: '[data-exists-pin]', start: 'top top', end: '+=160%', scrub: 1, pin: true, anticipatePin: 1 } })
+      .from(vendors, { '--s': 0, opacity: 0, stagger: 0.08, duration: 0.35, ease: 'back.out(2)' })
+      .to('[data-exists-line] span', { '--strike': '100%', duration: 0.3 }, '+=0.1')
+      .to(vendors, { '--px': 0, '--py': 0, '--rot': '0deg', '--s': 0.35, duration: 0.6, stagger: 0.04, ease: 'power2.in' }, '+=0.1')
+      .to(vendors, { opacity: 0, duration: 0.12 }, '-=0.12')
+      .to(oneRoof, { scale: 1, rotate: 0, duration: 0.5, ease: 'back.out(1.7)', startAt: { rotate: -120 } }, '-=0.1')
+      .fromTo('[data-exists-resolve]', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3 }, '-=0.2')
+      .to({}, { duration: 0.25 });
+  }
 }
 
 /* ---------------------------------------------------------
-   Process — pinned step-through on desktop, tabs everywhere
+   Services: stacking cards (each new card slides over the last,
+   the ones underneath shrink back like a deck)
    --------------------------------------------------------- */
-const steps = $$('[data-step]');
-const stepArts = $$('[data-step-art]');
-const stepTabs = $$('[data-step-tab]');
-const stepBar = $('[data-process-bar]');
-let stepIdx = 0;
-function setStep(i) {
-  if (i === stepIdx) return;
-  stepIdx = i;
-  steps.forEach((s, k) => s.classList.toggle('is-active', k === i));
-  stepArts.forEach((s, k) => s.classList.toggle('is-active', k === i));
-  stepTabs.forEach((t, k) => {
-    t.classList.toggle('is-active', k === i);
-    t.setAttribute('aria-selected', String(k === i));
-  });
-  stepBar.style.width = `${(i + 1) * 25}%`;
-}
-let processST = null;
-stepTabs.forEach((tab, i) =>
-  tab.addEventListener('click', () => {
-    if (processST) scrollToTarget(processST.start + (processST.end - processST.start) * (i / 4 + 0.1));
-    else setStep(i);
-  })
-);
-if (!reduce) {
-  mm.add('(min-width: 761px)', () => {
-    processST = ScrollTrigger.create({
-      trigger: '.process__card',
-      start: 'center center',
-      end: '+=220%',
-      pin: '[data-process-pin]',
-      anticipatePin: 1,
-      onUpdate: (self) => setStep(Math.min(3, Math.floor(self.progress * 4))),
+(function stack() {
+  const cards = $$('[data-stack] > .stack__card');
+  if (!cards.length || reduce) return;
+  let tops = [];
+  const measure = () => (tops = cards.map((c) => parseFloat(getComputedStyle(c).top) || 0));
+  const update = () => {
+    const vh = innerHeight;
+    const arrived = cards.map((c, i) => (i === 0 ? 0 : gsap.utils.clamp(0, 1, (vh - c.getBoundingClientRect().top) / Math.max(1, vh - tops[i]))));
+    cards.forEach((card, i) => {
+      let depth = 0;
+      for (let j = i + 1; j < cards.length; j++) depth += arrived[j];
+      card.style.transform = depth ? `scale(${1 - depth * 0.05})` : '';
+      card.style.filter = depth ? `brightness(${1 - Math.min(depth, 2) * 0.07})` : '';
     });
-    return () => (processST = null);
+  };
+  measure();
+  update();
+  addEventListener('resize', () => {
+    measure();
+    update();
   });
-  mm.add('(max-width: 760px)', () => {
-    const id = setInterval(() => {
-      const r = $('.process__card').getBoundingClientRect();
-      if (r.top < innerHeight && r.bottom > 0) setStep((stepIdx + 1) % 4);
-    }, 3600);
-    return () => clearInterval(id);
-  });
+  onScrollTick(update);
+})();
+
+/* ---------------------------------------------------------
+   Process: pinned step-through on desktop, tabs everywhere
+   --------------------------------------------------------- */
+if ($('[data-process]')) {
+  const steps = $$('[data-step]');
+  const stepArts = $$('[data-step-art]');
+  const stepTabs = $$('[data-step-tab]');
+  const stepBar = $('[data-process-bar]');
+  let stepIdx = 0;
+  const setStep = (i) => {
+    if (i === stepIdx) return;
+    stepIdx = i;
+    steps.forEach((s, k) => s.classList.toggle('is-active', k === i));
+    stepArts.forEach((s, k) => s.classList.toggle('is-active', k === i));
+    stepTabs.forEach((t, k) => {
+      t.classList.toggle('is-active', k === i);
+      t.setAttribute('aria-selected', String(k === i));
+    });
+    stepBar.style.width = `${(i + 1) * 25}%`;
+  };
+  let processST = null;
+  stepTabs.forEach((tab, i) =>
+    tab.addEventListener('click', () => {
+      if (processST) scrollToTarget(processST.start + (processST.end - processST.start) * (i / 4 + 0.1));
+      else setStep(i);
+    })
+  );
+  if (!reduce) {
+    mm.add('(min-width: 761px)', () => {
+      processST = ScrollTrigger.create({
+        trigger: '.process__card',
+        start: 'center center',
+        end: '+=220%',
+        pin: '[data-process-pin]',
+        anticipatePin: 1,
+        onUpdate: (self) => setStep(Math.min(3, Math.floor(self.progress * 4))),
+      });
+      return () => (processST = null);
+    });
+    mm.add('(max-width: 760px)', () => {
+      const id = setInterval(() => {
+        const r = $('.process__card').getBoundingClientRect();
+        if (r.top < innerHeight && r.bottom > 0) setStep((stepIdx + 1) % 4);
+      }, 3600);
+      return () => clearInterval(id);
+    });
+  }
 }
 
 /* ---------------------------------------------------------
@@ -307,7 +340,9 @@ if (reduce) {
 
   // Leadership quote lights up word by word
   const quote = $('[data-scrub-words]');
-  gsap.fromTo(splitText(quote, { chars: false }), { opacity: 0.13 }, { opacity: 1, stagger: 0.1, ease: 'none', scrollTrigger: { trigger: quote, start: 'top 82%', end: 'bottom 50%', scrub: true } });
+  if (quote) {
+    gsap.fromTo(splitText(quote, { chars: false }), { opacity: 0.13 }, { opacity: 1, stagger: 0.1, ease: 'none', scrollTrigger: { trigger: quote, start: 'top 82%', end: 'bottom 50%', scrub: true } });
+  }
 
   // Footer wordmark rises letter by letter
   const fw = $('[data-footer-word]');
@@ -331,10 +366,11 @@ $$('[data-count]').forEach((el) => {
 });
 
 /* ---------------------------------------------------------
-   Sector tiles riding a sine wave (Agenius brand marquee)
+   Industry tiles riding a sine wave (Agenius brand marquee)
    --------------------------------------------------------- */
 (function wave() {
   const wrap = $('[data-wave]');
+  if (!wrap) return;
   const track = $('[data-wave-track]');
   const base = $$('.wave__tile', track);
   let tiles = base;
@@ -355,7 +391,7 @@ $$('[data-count]').forEach((el) => {
   const draw = () => {
     const k = (Math.PI * 2) / Math.max(W, 900);
     tiles.forEach((tile, i) => {
-      let x = (((i * spacing - offset) % total) + total) % total - spacing;
+      const x = (((i * spacing - offset) % total) + total) % total - spacing;
       const cx = x + spacing / 2;
       const y = Math.sin(cx * k * 1.2) * amp;
       const slope = Math.cos(cx * k * 1.2) * amp * k * 1.2;
@@ -381,7 +417,7 @@ $$('[data-count]').forEach((el) => {
 /* ---------------------------------------------------------
    Marquees (ticker bands + testimonial rail): duplicate for seamless loops
    --------------------------------------------------------- */
-[...$$('[data-band]'), $('.quotes__track')].forEach((track) => {
+[...$$('[data-band]'), ...$$('.quotes__track')].forEach((track) => {
   track.innerHTML += track.innerHTML;
   [...track.children].slice(track.children.length / 2).forEach((c) => c.setAttribute('aria-hidden', 'true'));
 });
@@ -391,6 +427,7 @@ $$('[data-count]').forEach((el) => {
    --------------------------------------------------------- */
 (function radar() {
   const svg = $('[data-radar-svg]');
+  if (!svg) return;
   const NS = 'http://www.w3.org/2000/svg';
   const el = (tag, attrs, parent = svg) => {
     const n = document.createElementNS(NS, tag);
@@ -429,8 +466,7 @@ $$('[data-count]').forEach((el) => {
       const dy = nd.y - C;
       const bend = i % 2 ? 0.28 : -0.28;
       const d = `M${C},${C} Q${mx - dy * bend},${my + dx * bend} ${nd.x},${nd.y}`;
-      const p = el('path', { d, class: 'radar__arc' }, arcG);
-      arcs.push(p);
+      arcs.push(el('path', { d, class: 'radar__arc' }, arcG));
       if (!reduce && i % 2 === 0) {
         const dot = el('circle', { r: 3, class: 'radar__signal' }, arcG);
         el('animateMotion', { dur: `${2.2 + (i % 3) * 0.6}s`, repeatCount: 'indefinite', path: d, begin: `${i * 0.35}s` }, dot);
@@ -461,7 +497,7 @@ $$('[data-count]').forEach((el) => {
 })();
 
 /* ---------------------------------------------------------
-   Accordions (services + FAQ)
+   Accordions (FAQ)
    --------------------------------------------------------- */
 $$('[data-accordion]').forEach((acc) => {
   const items = [...acc.children];
@@ -485,56 +521,60 @@ $$('[data-accordion]').forEach((acc) => {
 /* ---------------------------------------------------------
    Dialogs: showreel + case studies
    --------------------------------------------------------- */
-const reelDlg = $('[data-reel-dialog]');
-const reelFull = $('[data-reel-full]');
-function openDialog(dlg) {
-  dlg.showModal();
-  lenis?.stop();
-}
 $$('dialog').forEach((dlg) => {
   dlg.addEventListener('close', () => {
     lenis?.start();
-    if (dlg === reelDlg) reelFull.pause();
+    $$('video', dlg).forEach((v) => v.pause());
   });
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close());
 });
 $$('[data-close-dialog]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
-$$('[data-open-reel]').forEach((b) =>
-  b.addEventListener('click', () => {
-    openDialog(reelDlg);
-    reelFull.currentTime = 0;
-    reelFull.play().catch(() => {});
-  })
-);
+function openDialog(dlg) {
+  dlg.showModal();
+  lenis?.stop();
+}
 
-const caseDlg = $('[data-case-dialog]');
-function openCase(key) {
-  const c = CASES[key];
-  if (!c) return;
-  const img = $('[data-casebox-img]', caseDlg);
-  img.src = c.img;
-  img.alt = c.alt;
-  $('[data-casebox-tag]', caseDlg).textContent = c.tag;
-  $('[data-casebox-title]', caseDlg).textContent = c.title;
-  const dl = $('[data-casebox-list]', caseDlg);
-  dl.replaceChildren(
-    ...c.rows.flatMap(([k, v]) => {
-      const dt = document.createElement('dt');
-      dt.textContent = k;
-      const dd = document.createElement('dd');
-      dd.textContent = v;
-      return [dt, dd];
+const reelDlg = $('[data-reel-dialog]');
+if (reelDlg) {
+  const reelFull = $('[data-reel-full]');
+  $$('[data-open-reel]').forEach((b) =>
+    b.addEventListener('click', () => {
+      openDialog(reelDlg);
+      reelFull.currentTime = 0;
+      reelFull.play().catch(() => {});
     })
   );
-  openDialog(caseDlg);
 }
-$$('[data-open-case]').forEach((b) => b.addEventListener('click', () => openCase(b.dataset.openCase)));
-$$('.case__media').forEach((m) => m.addEventListener('click', () => openCase(m.closest('[data-case]').dataset.case)));
+
+const caseDlg = $('[data-case-dialog]');
+if (caseDlg) {
+  const openCase = (key) => {
+    const c = CASES[key];
+    if (!c) return;
+    const img = $('[data-casebox-img]', caseDlg);
+    img.src = c.img;
+    img.alt = c.alt;
+    $('[data-casebox-tag]', caseDlg).textContent = c.tag;
+    $('[data-casebox-title]', caseDlg).textContent = c.title;
+    $('[data-casebox-list]', caseDlg).replaceChildren(
+      ...c.rows.flatMap(([k, v]) => {
+        const dt = document.createElement('dt');
+        dt.textContent = k;
+        const dd = document.createElement('dd');
+        dd.textContent = v;
+        return [dt, dd];
+      })
+    );
+    openDialog(caseDlg);
+  };
+  $$('[data-open-case]').forEach((b) => b.addEventListener('click', () => openCase(b.dataset.openCase)));
+  $$('.case__media').forEach((m) => m.addEventListener('click', () => openCase(m.closest('[data-case]').dataset.case)));
+}
 
 /* ---------------------------------------------------------
    Custom "View" cursor over portfolio images
    --------------------------------------------------------- */
-if (finePointer && !reduce) {
+if (finePointer && !reduce && $('[data-cursor]')) {
   const cur = $('[data-cursor-dot]');
   const label = $('span', cur);
   const xTo = gsap.quickTo(cur, 'x', { duration: 0.45, ease: 'power3' });
@@ -553,48 +593,92 @@ if (finePointer && !reduce) {
 }
 
 /* ---------------------------------------------------------
-   Contact form
+   Careers: "Apply" on a team card picks that team in the form
    --------------------------------------------------------- */
-const form = $('[data-contact-form]');
-const status = $('[data-form-status]');
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const data = Object.fromEntries(new FormData(form));
-  let ok = true;
-  $$('.field', form).forEach((f) => {
-    const input = $('input, textarea', f);
-    const bad = (input.required && !input.value.trim()) || (input.type === 'email' && input.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value));
-    f.classList.toggle('is-invalid', bad);
-    if (bad) ok = false;
-  });
-  status.className = 'form__status';
-  if (!ok) {
-    status.textContent = 'Please add your name, a valid email and a short message.';
-    status.classList.add('is-err');
-    return;
-  }
-  if (FORM_ENDPOINT) {
-    try {
-      const res = await fetch(FORM_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(data) });
-      if (!res.ok) throw new Error(res.statusText);
-      status.textContent = `Thanks ${data.name.split(' ')[0]} — our media planners will be in touch shortly.`;
-      status.classList.add('is-ok');
-      form.reset();
-    } catch {
-      status.textContent = `Something went wrong. Please email us at ${CONTACT_EMAIL}.`;
+$$('[data-apply]').forEach((b) =>
+  b.addEventListener('click', () => {
+    const select = $('[data-apply-select]');
+    if (select) select.value = b.dataset.apply;
+    scrollToTarget($('#apply'));
+  })
+);
+
+/* ---------------------------------------------------------
+   Forms: enquiries go to pinak@, job applications to hr@
+   (set by data-to on each form)
+   --------------------------------------------------------- */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+$$('form[data-mail-form]').forEach((form) => {
+  const status = $('[data-form-status]', form);
+  const careers = form.dataset.kind === 'careers';
+  const to = form.dataset.to;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    let ok = true;
+    $$('.field', form).forEach((f) => {
+      const input = $('input, textarea, select', f);
+      const v = input.value.trim();
+      const bad =
+        (input.required && !v) ||
+        (input.type === 'email' && v && !EMAIL.test(v)) ||
+        (input.type === 'url' && v && !/^https?:\/\/\S+\.\S+/.test(v));
+      f.classList.toggle('is-invalid', bad);
+      if (bad) ok = false;
+    });
+    status.className = 'form__status';
+    if (!ok) {
+      status.textContent = careers
+        ? 'Please add your name, a valid email, the team you’re interested in and a few lines about you.'
+        : 'Please add your name, a valid email and a short message.';
       status.classList.add('is-err');
+      return;
     }
-    return;
-  }
-  const body = `Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone || '—'}\n\n${data.message}`;
-  window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`New enquiry — ${data.name}`)}&body=${encodeURIComponent(body)}`;
-  status.textContent = `Thanks ${data.name.split(' ')[0]} — your email app should open with your brief. If not, write to ${CONTACT_EMAIL}.`;
-  status.classList.add('is-ok');
+
+    const data = Object.fromEntries(new FormData(form));
+    const first = data.name.trim().split(/\s+/)[0];
+    const details = $$('.field', form)
+      .map((f) => {
+        const input = $('input, select', f);
+        return input && input.value.trim() ? `${$('span', f).textContent.trim()}: ${input.value.trim()}` : null;
+      })
+      .filter(Boolean);
+    const subject = careers ? `Job application: ${data.area} (${data.name})` : `New enquiry from ${data.name}`;
+    const body = `${details.join('\n')}\n\n${data.message.trim()}${careers ? '\n\nPlease find my CV attached.' : ''}`;
+
+    if (FORM_ENDPOINT) {
+      try {
+        const res = await fetch(FORM_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ ...data, _to: to, _subject: subject }),
+        });
+        if (!res.ok) throw new Error(res.statusText);
+        status.textContent = careers ? `Thanks ${first}! Our HR team will be in touch.` : `Thanks ${first}! Our media planners will be in touch soon.`;
+        status.classList.add('is-ok');
+        form.reset();
+      } catch {
+        status.textContent = `Something went wrong. Please email us at ${to}.`;
+        status.classList.add('is-err');
+      }
+      return;
+    }
+
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    status.textContent = careers
+      ? `Thanks ${first}! Your email app should open now. Attach your CV and hit send, or write to ${to} directly.`
+      : `Thanks ${first}! Your email app should open with your message. If it doesn’t, write to us at ${to}.`;
+    status.classList.add('is-ok');
+  });
 });
 
 /* ---------------------------------------------------------
-   Keep trigger positions accurate once fonts/images settle
+   Keep trigger positions accurate once fonts/images settle,
+   and land on the right section when arriving from another page
    --------------------------------------------------------- */
 ScrollTrigger.sort();
 document.fonts?.ready.then(() => ScrollTrigger.refresh());
-addEventListener('load', () => ScrollTrigger.refresh());
+addEventListener('load', () => {
+  ScrollTrigger.refresh();
+  const target = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if (target) requestAnimationFrame(() => scrollToTarget(target, true));
+});
