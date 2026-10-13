@@ -326,7 +326,7 @@ if (reduce) {
     onEnter: (batch) => gsap.to(batch, { y: 0, opacity: 1, duration: 1, stagger: 0.1, ease: 'power3.out', overwrite: true, clearProps: 'transform' }),
   });
 
-  $$('.sticker:not(.hero__sticker)').forEach((s) =>
+  $$('.sticker:not(.hero__sticker), .name-tag').forEach((s) =>
     gsap.fromTo(s, { '--pop': 0 }, { '--pop': 1, duration: 1.1, delay: 0.25, ease: 'elastic.out(1, 0.45)', scrollTrigger: { trigger: s, start: 'top 92%' } })
   );
 
