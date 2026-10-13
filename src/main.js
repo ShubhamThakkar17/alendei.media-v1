@@ -439,8 +439,8 @@ $$('[data-count]').forEach((el) => {
   const rings = [
     { r: 72, label: 'METRO', n: 4, off: 0.4 },
     { r: 126, label: 'TIER 1', n: 6, off: 0.1 },
-    { r: 180, label: 'TIER 2', n: 8, off: 0.55 },
-    { r: 234, label: 'TIER 3', n: 11, off: 0.2 },
+    { r: 180, label: 'TIER 2 & 3', n: 8, off: 0.55 },
+    { r: 234, label: 'GLOBAL', n: 11, off: 0.2 },
   ];
   const ringEls = [];
   const nodes = [];
@@ -604,7 +604,7 @@ $$('[data-apply]').forEach((b) =>
 );
 
 /* ---------------------------------------------------------
-   Forms: enquiries go to pinak@, job applications to hr@
+   Forms: enquiries go to bharat@, job applications to hr@
    (set by data-to on each form)
    --------------------------------------------------------- */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

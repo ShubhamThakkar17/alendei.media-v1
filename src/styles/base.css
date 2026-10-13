@@ -116,6 +116,12 @@ input, textarea { font: inherit; color: inherit; }
 .pill--peach { background: var(--peach); }
 .pill--lime { background: var(--lime); }
 .pill--ink { background: var(--ink); color: var(--cream); box-shadow: 0 3px 0 rgba(16, 41, 28, 0.35); }
+/* Spinning globe icon (meridians sweep across like a rotating earth) */
+.globe { width: 1.5em; height: 1.5em; flex: none; fill: none; stroke: var(--green); stroke-width: 1.6; margin: -0.3em 0; }
+.globe__lat { opacity: 0.55; }
+.globe__m { transform-box: fill-box; transform-origin: center; animation: globe-spin 3.2s linear infinite; }
+.globe__m2 { animation-delay: -1.6s; }
+@keyframes globe-spin { from { transform: scaleX(1); } to { transform: scaleX(-1); } }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); flex: none; animation: dot-pulse 1.8s ease-in-out infinite; }
 .dot--lime { background: var(--lime); }
 .tag-dark { background: var(--ink); color: var(--cream); font: 700 0.7rem/1 var(--ff-body); padding: 0.45em 0.6em; border-radius: 6px; }

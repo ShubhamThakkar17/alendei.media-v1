@@ -1,6 +1,6 @@
 # Alendei Media Website
 
-The marketing site for **Alendei Media** (360° media and marketing from Bharat). It follows the
+The marketing site for **Alendei Media**, a global 360° media and marketing firm from Bharat. It follows the
 [Agenius Framer template](https://agenius.framer.website/): cream canvas, condensed Oswald display type,
 pastel sections with scalloped edges, spinning sticker badges, doodle illustrations, a showreel that grows
 out of concentric rings, and scroll animations throughout.
@@ -49,7 +49,7 @@ The nav and footer live in `partials/` so a change there updates both pages.
 4. Why Alendei exists: five vendor cards collapse into one "One roof. Every channel." circle
 5. Numbers: 8 stats that count up
 6. Services: 4 stacking cards that pile up as you scroll
-7. Media Network: animated Metro to Tier 3 radar and 6 animated stat cards
+7. Media Network: animated radar (Metro, Tier 1, Tier 2 & 3, Global) and 6 animated stat cards
 8. Ticker bands
 9. Benefits: 6 card bento
 10. Work: 4 case cards with a popup
@@ -57,10 +57,11 @@ The nav and footer live in `partials/` so a change there updates both pages.
 12. Built different: comparison table
 13. Testimonials: video tiles and a quote rail
 14. Engagement models (no pricing)
-15. Founders' message, About, and Leadership (Priyang Patel, Prinsal Parikh, Pinak Agrawal) with a link to Careers
+15. Founders' message, About, and Leadership (Priyang Patel, Prinsal Parikh, Pinak Agrawal)
 16. FAQs
-17. Contact form, office details and a map
-18. Footer
+17. Careers band ("Want to build brands the world can’t ignore?") linking to the careers page
+18. Contact form, office details and a map
+19. Footer
 
 ### Writing style
 
@@ -81,14 +82,15 @@ a full stop or "and" instead.
 
 ## Contact details used
 
-- Business enquiries: **pinak@alendei.com**, +91 91270 70912, WhatsApp +91 95128 58588
+- Business enquiries: **bharat@alendei.com**, +91 84695 25008
 - Careers: **hr@alendei.com**
-- Office: Iscon Atria-2, 302, Gotri Rd, opp. GETRI, Gotri, Vadodara, Gujarat 390007
+- Office: 302, Iscon Atria 2, Gotri, Vadodara, Gujarat 390007 India
+- Footer: © 2026 Alendei Media Pvt Ltd. All rights reserved.
 
 ## Forms
 
 Both forms check their fields, then open the visitor's email app with a ready-to-send message. The contact form
-goes to `pinak@alendei.com` and the careers form goes to `hr@alendei.com` (set by `data-to` on each `<form>`).
+goes to `bharat@alendei.com` and the careers form goes to `hr@alendei.com` (set by `data-to` on each `<form>`).
 Applicants are asked to attach their CV before sending, since a mailto link can't carry attachments.
 
 To post submissions to a form service instead (Formspree, Basin, a serverless function and so on), set
@@ -107,6 +109,9 @@ with the logo. Set it to `#3B001B` for the original Agenius maroon.
 - Images are WebP and lazy loaded. The hero video pauses when off screen, and phones get a 360p version.
 
 ## Credits & licences
+
+None of these licences require on-site credit, so the site itself doesn't show one.
+
 
 - Illustrations: [Open Doodles](https://www.opendoodles.com) by Pablo Stanley (CC0), rendered from `react-open-doodles`
 - Photos: [Unsplash](https://unsplash.com) (Unsplash License)
